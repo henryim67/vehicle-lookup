@@ -8,7 +8,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
 <style>
@@ -44,6 +45,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--accent);color:var(--accent-fg);
   padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;align-items:center;gap:10px}
+header .logo{width:34px;height:34px;background:#fff;border-radius:8px;padding:3px;object-fit:contain;flex:none}
 header h1{font-size:17px;margin:0;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header .who{font-size:13px;opacity:.9}
 .hbtn{background:transparent;border:1px solid rgba(255,255,255,.45);color:inherit;border-radius:8px;padding:6px 10px;font-size:13px}
@@ -111,6 +113,7 @@ details summary{cursor:pointer;font-weight:500;padding:6px 0}
 </head>
 <body>
 <header>
+  <img class="logo" src="logo.png" alt="" width="34" height="34">
   <h1 id="title">등록차량 조회</h1>
   <span class="who" id="who"></span>
   <button class="hbtn" id="btnAdmin" hidden>관리</button>
