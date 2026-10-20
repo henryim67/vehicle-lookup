@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title>등록차량 조회</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f6b3f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one-screen phone tool. Sticky header, big search field, plate-styled result cards, admin drawer. */
+:root{
+  --bg:#f3f5f2; --panel:#ffffff; --fg:#17201b; --muted:#5e6b63; --line:#d6ddd7;
+  --accent:#0f6b3f; --accent-fg:#ffffff; --soft:#e3efe7;
+  --warn:#b4541a; --warn-soft:#fbe9dc; --danger:#a82a2a;
+  --plate:#ffffff; --plate-fg:#111; --plate-line:#333;
+  --font:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121613; --panel:#1b211d; --fg:#e8ece9; --muted:#9aa89f; --line:#2e3831;
+  --accent:#3fa36f; --accent-fg:#06130b; --soft:#1f3328;
+  --warn:#e38a4c; --warn-soft:#3a2617; --danger:#e06b6b;
+  --plate:#f2f2f2; --plate-fg:#111; --plate-line:#444; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121613; --panel:#1b211d; --fg:#e8ece9; --muted:#9aa89f; --line:#2e3831;
+  --accent:#3fa36f; --accent-fg:#06130b; --soft:#1f3328;
+  --warn:#e38a4c; --warn-soft:#3a2617; --danger:#e06b6b;
+  --plate:#f2f2f2; --plate-fg:#111; --plate-line:#444; color-scheme:dark}
+
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--accent)}
+*{box-sizing:border-box}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--accent);color:var(--accent-fg);
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;align-items:center;gap:10px}
+header h1{font-size:17px;margin:0;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .who{font-size:13px;opacity:.9}
+.hbtn{background:transparent;border:1px solid rgba(255,255,255,.45);color:inherit;border-radius:8px;padding:6px 10px;font-size:13px}
+
+main{padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:560px;margin:0 auto}
+.view[hidden]{display:none}
+.stack{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>*{min-width:0}
+.grow{flex:1}
+.muted{color:var(--muted);font-size:14px}
+.label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h2{font-size:18px;margin:0;text-wrap:balance}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:12px 16px;font-weight:500;min-height:48px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:700}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.small{min-height:36px;padding:6px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.block{width:100%}
+
+input.field,select.field{width:100%;min-height:48px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel);color:var(--fg)}
+.search{display:flex;gap:8px}
+.search input{flex:1;font-size:30px;font-weight:700;letter-spacing:.12em;text-align:center;min-height:68px;font-variant-numeric:tabular-nums}
+.search .btn{min-width:64px;font-size:14px;padding:6px}
+.hint{font-size:13px;color:var(--muted);text-align:center}
+
+.result{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center}
+.card .unit{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.card .unit small{font-size:14px;color:var(--muted);font-weight:500;margin-left:4px}
+.plate{grid-column:1/-1;display:inline-flex;align-items:center;justify-content:center;background:var(--plate);color:var(--plate-fg);
+  border:2px solid var(--plate-line);border-radius:6px;padding:4px 14px;font-weight:700;font-size:26px;letter-spacing:.1em;
+  font-family:var(--mono);justify-self:start;font-variant-numeric:tabular-nums}
+.plate mark{background:#ffe03a;color:#111;border-radius:3px;padding:0 2px}
+.card .meta{grid-column:1/-1;color:var(--fg);font-size:19px;font-weight:500;display:flex;gap:16px;flex-wrap:wrap}
+.card .meta .reg{color:var(--muted);font-weight:400}
+.card .actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.phone{font-family:var(--mono);font-size:17px;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+a.call{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-fg);text-decoration:none;border-radius:10px;padding:12px 18px;font-weight:700;min-height:48px}
+.none{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:12px;padding:16px;text-align:center;font-weight:700;font-size:18px}
+.none small{display:block;font-weight:400;font-size:13px;margin-top:4px}
+
+.pin{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:300px;margin:0 auto}
+.pin button{min-height:56px;font-size:22px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.dots{display:flex;gap:10px;justify-content:center;min-height:20px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--accent);display:block}
+.dots i.on{background:var(--accent)}
+.err{color:var(--danger);font-size:14px;min-height:20px;text-align:center}
+.ok{color:var(--accent);font-size:14px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500}
+.tablewrap{overflow-x:auto}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
+.kv b{font-weight:500;color:var(--muted)}
+.tag{display:inline-block;background:var(--soft);color:var(--accent);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:500}
+details summary{cursor:pointer;font-weight:500;padding:6px 0}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;z-index:20;transition:opacity .2s}
+.toast[hidden]{display:none}
+.confirm{border:1px solid var(--danger);border-radius:10px;padding:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">등록차량 조회</h1>
+  <span class="who" id="who"></span>
+  <button class="hbtn" id="btnAdmin" hidden>관리</button>
+  <button class="hbtn" id="btnLogout" hidden>나가기</button>
+</header>
+
+<main>
+<!-- 첫 실행: 관리자 PIN 설정 -->
+<section class="view stack" id="vSetup" hidden>
+  <h2>처음 설정</h2>
+  <p class="muted">관리자(관리사무소) PIN을 정합니다. 숫자 4~6자리. 이 PIN으로 명단 업로드와 경비원 계정 관리를 합니다.</p>
+  <div class="dots" id="setupDots"></div>
+  <div class="err" id="setupErr"></div>
+  <div class="pin" id="setupPad"></div>
+  <p class="muted" id="setupStep">PIN 입력 후 확인을 누르세요.</p>
+</section>
+
+<!-- 로그인 -->
+<section class="view stack" id="vLogin" hidden>
+  <h2>근무자 선택</h2>
+  <select class="field" id="loginUser"></select>
+  <div class="dots" id="loginDots"></div>
+  <div class="err" id="loginErr"></div>
+  <div class="pin" id="loginPad"></div>
+  <p class="hint">PIN 입력 시 자동으로 들어갑니다.</p>
+</section>
+
+<!-- 조회 -->
+<section class="view stack" id="vSearch" hidden>
+  <div class="search">
+    <input id="q" class="field" type="text" inputmode="numeric" autocomplete="off" placeholder="뒷자리 4자리" maxlength="12" aria-label="차량번호 검색">
+    <button class="btn" id="btnMode" title="전체번호 입력">한글</button>
+    <button class="btn" id="btnClear">지움</button>
+  </div>
+  <div class="hint" id="dbHint"></div>
+  <div class="result" id="results"></div>
+</section>
+
+<!-- 관리 -->
+<section class="view stack" id="vAdmin" hidden>
+  <div class="row"><h2 class="grow">관리</h2><button class="btn small" id="btnBack">조회로</button></div>
+
+  <div class="panel stack">
+    <div class="label">차량 명단</div>
+    <div class="kv" id="dbInfo"></div>
+    <input type="file" id="file" accept=".xlsx,.xls" hidden>
+    <div class="row">
+      <button class="btn primary" id="btnUpload">엑셀 업로드</button>
+      <select class="field grow" id="sheetPick" hidden></select>
+    </div>
+    <div id="parsePreview" class="muted"></div>
+    <div class="row" id="applyRow" hidden>
+      <button class="btn primary" id="btnApply">이 시트로 저장</button>
+      <button class="btn" id="btnCancelApply">취소</button>
+    </div>
+    <p class="muted" style="margin:0">업로드하면 기존 명단은 교체됩니다. 해지일이 있는 행과 소계·합계 행은 자동 제외됩니다. 파일 자체는 저장되지 않고 필요한 4개 열만 이 폰에 남습니다.</p>
+  </div>
+
+  <div class="panel stack">
+    <div class="label">근무자 계정</div>
+    <div id="guardList"></div>
+    <div class="row">
+      <input class="field grow" id="gName" placeholder="이름 (예: 홍길동)" maxlength="12">
+      <input class="field" id="gPin" placeholder="PIN 4~6자리" inputmode="numeric" maxlength="6" style="width:140px">
+      <button class="btn" id="btnAddGuard">추가</button>
+    </div>
+    <div class="err" id="guardErr"></div>
+  </div>
+
+  <div class="panel stack">
+    <div class="label">조회 기록</div>
+    <div class="row">
+      <span class="muted grow" id="logCount"></span>
+      <button class="btn small" id="btnCopyLog">CSV 복사</button>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>시각</th><th>근무자</th><th>조회</th><th>결과</th></tr></thead><tbody id="logBody"></tbody></table></div>
+    <p class="muted" style="margin:0">최근 50건 표시. 전체 기록은 CSV 복사로 내보냅니다(최대 20,000건 보관).</p>
+  </div>
+
+  <div class="panel stack">
+    <div class="label">관리자 PIN · 초기화</div>
+    <div class="row">
+      <input class="field" id="newAdminPin" placeholder="새 관리자 PIN" inputmode="numeric" maxlength="6" style="width:160px">
+      <button class="btn" id="btnChangeAdmin">변경</button>
+    </div>
+    <button class="btn danger" id="btnWipe">명단·기록 전부 삭제</button>
+    <div class="confirm" id="wipeConfirm" hidden>
+      <span class="grow">폰에 저장된 차량 명단과 조회 기록을 모두 지웁니다. 되돌릴 수 없습니다.</span>
+      <button class="btn small danger" id="btnWipeYes">삭제 실행</button>
+      <button class="btn small" id="btnWipeNo">취소</button>
+    </div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const KEYS={admin:'vl_admin',guards:'vl_guards',db:'vl_db',log:'vl_log'};
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast('저장 실패: 저장공간을 확인하세요');return false}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+let session=null; // {name, admin:boolean}
+try{session=JSON.parse(sessionStorage.getItem('vl_session')||'null')}catch(e){}
+
+async function hash(s){
+  try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('vl:'+s));
+    return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+  catch(e){return 'plain:'+s}
+}
+function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,2200)}
+function fmtDate(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function normPlate(s){return String(s||'').replace(/[^0-9가-힣]/g,'')}
+const PLATE_RE=/^(?:[가-힣]{2})?\d{2,3}[가-힣]\d{4}$/;
+function maskPhone(p){
+  const d=String(p||'').replace(/\D/g,'');
+  if(d.length<8) return p||'';
+  const last=d.slice(-4);
+  if(d.length===11) return `${d.slice(0,3)}-****-${last}`;
+  if(d.length===10) return `${d.slice(0,3)}-***-${last}`;
+  return `${d.slice(0,d.length-8)}-****-${last}`;
+}
+function telHref(p){return 'tel:'+String(p||'').replace(/[^\d+]/g,'')}
+
+/* ---------- views ---------- */
+const views=['vSetup','vLogin','vSearch','vAdmin'];
+function show(v){views.forEach(x=>$(x).hidden=(x!==v));
+  const s=!!session; $('btnLogout').hidden=!s; $('btnAdmin').hidden=!(s&&session.admin&&v!=='vAdmin');
+  $('who').textContent=s?(session.name+(session.admin?' (관리자)':'')):'';
+  if(v==='vSearch'){renderDbHint();setTimeout(()=>$('q').focus(),50)}
+  if(v==='vAdmin'){renderAdmin()}
+}
+function route(){
+  const admin=store.get(KEYS.admin,null);
+  if(!admin){show('vSetup');return}
+  if(!session){buildLogin();show('vLogin');return}
+  show('vSearch');
+}
+
+/* ---------- PIN pad ---------- */
+function makePad(container,dots,onChange,onSubmit){
+  let buf='';
+  const keys=['1','2','3','4','5','6','7','8','9','←','0','확인'];
+  container.innerHTML='';
+  keys.forEach(k=>{const b=document.createElement('button');b.type='button';b.textContent=k;
+    b.onclick=()=>{ if(k==='←')buf=buf.slice(0,-1); else if(k==='확인'){onSubmit(buf);return} else if(buf.length<6)buf+=k;
+      draw(); onChange&&onChange(buf)};
+    container.appendChild(b)});
+  function draw(){dots.innerHTML=Array.from({length:Math.max(4,buf.length)},(_,i)=>`<i class="${i<buf.length?'on':''}"></i>`).join('')}
+  draw();
+  return {reset(){buf='';draw()},get(){return buf}};
+}
+
+/* setup */
+let setupFirst=null;
+const setupPad=makePad($('setupPad'),$('setupDots'),null,async pin=>{
+  $('setupErr').textContent='';
+  if(!/^\d{4,6}$/.test(pin)){$('setupErr').textContent='숫자 4~6자리로 입력하세요';return}
+  if(setupFirst===null){setupFirst=pin;setupPad.reset();$('setupStep').textContent='확인을 위해 같은 PIN을 한 번 더 입력하세요.';return}
+  if(pin!==setupFirst){setupFirst=null;setupPad.reset();$('setupStep').textContent='PIN 입력 후 확인을 누르세요.';$('setupErr').textContent='두 번 입력이 다릅니다. 처음부터 다시 입력하세요';return}
+  store.set(KEYS.admin,{h:await hash(pin),at:Date.now()});
+  if(!store.get(KEYS.guards,null)) store.set(KEYS.guards,[]);
+  setSession({name:'관리자',admin:true});
+  toast('관리자 PIN이 설정되었습니다');
+  show('vAdmin');
+});
+
+/* login */
+function buildLogin(){
+  const sel=$('loginUser');sel.innerHTML='';
+  const guards=store.get(KEYS.guards,[]);
+  guards.forEach((g,i)=>{const o=document.createElement('option');o.value='g'+i;o.textContent=g.name;sel.appendChild(o)});
+  const o=document.createElement('option');o.value='admin';o.textContent='관리자 (관리사무소)';sel.appendChild(o);
+  try{const last=localStorage.getItem('vl_lastuser');if(last&&[...sel.options].some(x=>x.value===last))sel.value=last}catch(e){}
+  $('loginErr').textContent='';loginPad.reset();
+}
+const loginPad=makePad($('loginPad'),$('loginDots'),async pin=>{
+  if(pin.length<4)return;
+  await tryLogin(pin);
+},pin=>tryLogin(pin));
+async function tryLogin(pin){
+  const v=$('loginUser').value;const h=await hash(pin);
+  let ok=false,name='';
+  if(v==='admin'){const a=store.get(KEYS.admin,null);ok=a&&a.h===h;name='관리자'}
+  else{const g=store.get(KEYS.guards,[])[+v.slice(1)];ok=g&&g.h===h;name=g?g.name:''}
+  if(!ok){ if(pin.length>=6||$('loginPad')._lastTried===pin){$('loginErr').textContent='PIN이 맞지 않습니다';loginPad.reset()} $('loginPad')._lastTried=pin; return}
+  try{localStorage.setItem('vl_lastuser',v)}catch(e){}
+  setSession({name,admin:v==='admin'});
+  show('vSearch');
+}
+function setSession(s){session=s;try{sessionStorage.setItem('vl_session',JSON.stringify(s))}catch(e){}}
+$('btnLogout').onclick=()=>{session=null;try{sessionStorage.removeItem('vl_session')}catch(e){};$('q').value='';$('results').innerHTML='';route()};
+$('btnAdmin').onclick=()=>show('vAdmin');
+$('btnBack').onclick=()=>show('vSearch');
+
+/* ---------- search ---------- */
+let fullMode=false;
+$('btnMode').onclick=()=>{fullMode=!fullMode;const q=$('q');
+  q.inputMode=fullMode?'text':'numeric';q.placeholder=fullMode?'예: 12가3456':'뒷자리 4자리';
+  $('btnMode').textContent=fullMode?'숫자':'한글';q.focus()};
+$('btnClear').onclick=()=>{$('q').value='';$('results').innerHTML='';$('q').focus()};
+let searchTimer=null,lastLogged='';
+$('q').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(doSearch,120)});
+function renderDbHint(){
+  const db=store.get(KEYS.db,null);
+  $('dbHint').textContent=db?`${db.complex||''} 등록차량 ${db.rows.length}대 · 명단 ${db.uploadedAt.slice(0,10)} 기준`:'등록 명단이 없습니다. 관리자가 엑셀을 업로드해야 합니다.';
+  $('title').textContent=db&&db.complex?db.complex+' 차량조회':'등록차량 조회';
+}
+function doSearch(){
+  const raw=$('q').value.trim();const q=normPlate(raw);const out=$('results');
+  if(q.length<4&&!(fullMode&&q.length>=3)){out.innerHTML='';return}
+  const db=store.get(KEYS.db,null);if(!db){out.innerHTML='';return}
+  let hits;
+  if(/^\d{4}$/.test(q)) hits=db.rows.filter(r=>r.last4===q);
+  else hits=db.rows.filter(r=>r.norm.includes(q));
+  const key=q+'|'+hits.length;
+  if(key!==lastLogged){lastLogged=key;addLog(raw,hits.length?hits.map(r=>`${r.dong}-${r.ho} ${r.plate}`).join('; '):'미등록','조회')}
+  if(!hits.length){out.innerHTML=`<div class="none">미등록 차량<small>"${esc(raw)}" 에 해당하는 등록차량이 없습니다</small></div>`;return}
+  out.innerHTML=hits.map((r,i)=>{
+    const plate=esc(r.plate).replace(new RegExp(esc(q).split('').join('\\s*')+'(?!.*'+esc(q)+')'),m=>`<mark>${m}</mark>`);
+    const hasPhone=!!r.phone;
+    return `<div class="card">
+      <div class="unit">${esc(r.dong)}동 ${esc(r.ho)}호</div>
+      <span class="plate">${plate}</span>
+      <div class="meta">${r.model?`<span>${esc(r.model)}</span>`:''}${r.owner?`<span>${esc(r.owner)}</span>`:''}${r.regDate?`<span class="reg">등록 ${esc(r.regDate)}</span>`:''}</div>
+      <div class="actions">
+        ${hasPhone?`<a class="call" href="${telHref(r.phone)}" data-i="${i}">📞 전화걸기</a>
+        <span class="phone" id="ph${i}">${esc(maskPhone(r.phone))}</span>
+        <button class="btn small" data-reveal="${i}" data-shown="0">번호 보기</button>`:`<span class="muted">연락처 미등록</span>`}
+      </div></div>`}).join('');
+  out.querySelectorAll('a.call').forEach(a=>a.onclick=()=>{const r=hits[+a.dataset.i];addLog(raw,`${r.dong}-${r.ho} ${r.plate}`,'전화')});
+  out.querySelectorAll('[data-reveal]').forEach(b=>b.onclick=()=>{const i=+b.dataset.reveal;const r=hits[i];
+    if(b.dataset.shown==='1'){$('ph'+i).textContent=maskPhone(r.phone);b.textContent='번호 보기';b.dataset.shown='0';return}
+    $('ph'+i).textContent=r.phone;b.textContent='번호 가리기';b.dataset.shown='1';addLog(raw,`${r.dong}-${r.ho} ${r.plate}`,'번호열람')});
+}
+
+/* ---------- log ---------- */
+function addLog(q,res,act){
+  const log=store.get(KEYS.log,[]);
+  log.push({t:Date.now(),u:session?session.name:'-',q,r:res,a:act});
+  if(log.length>20000)log.splice(0,log.length-20000);
+  store.set(KEYS.log,log);
+}
+
+/* ---------- admin ---------- */
+function renderAdmin(){
+  const db=store.get(KEYS.db,null);
+  $('dbInfo').innerHTML=db?`<b>단지</b><span>${esc(db.complex||'-')}</span><b>차량</b><span>${db.rows.length}대 (${db.units}세대)</span><b>시트</b><span>${esc(db.sheet)}</span><b>업로드</b><span>${esc(db.uploadedAt)}</span><b>제외</b><span>해지 ${db.skipped.cancelled} · 번호형식 오류 ${db.skipped.badPlate} · 연락처 없음 ${db.noPhone}</span>`
+    :'<b>상태</b><span>명단 없음</span>';
+  const guards=store.get(KEYS.guards,[]);
+  $('guardList').innerHTML=guards.length?guards.map((g,i)=>`<div class="row" style="padding:4px 0;border-bottom:1px solid var(--line)"><span class="grow">${esc(g.name)}</span><span class="tag">등록 ${new Date(g.at).toISOString().slice(0,10)}</span><button class="btn small" data-del="${i}">삭제</button></div>`).join('')
+    :'<span class="muted">등록된 근무자가 없습니다. 아래에서 추가하세요.</span>';
+  $('guardList').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.del;const g=guards[i];
+    b.replaceWith(Object.assign(document.createElement('button'),{className:'btn small danger',textContent:`${g.name} 삭제 확정`,onclick(){guards.splice(i,1);store.set(KEYS.guards,guards);renderAdmin()}}))});
+  const log=store.get(KEYS.log,[]);
+  $('logCount').textContent=`총 ${log.length}건`;
+  $('logBody').innerHTML=log.slice(-50).reverse().map(l=>`<tr><td style="white-space:nowrap">${fmtDate(new Date(l.t))}</td><td>${esc(l.u)}</td><td>${esc(l.q)}</td><td>${esc(l.a==='조회'?l.r:l.a+' · '+l.r)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">기록 없음</td></tr>';
+}
+$('btnAddGuard').onclick=async()=>{
+  const name=$('gName').value.trim(),pin=$('gPin').value.trim();$('guardErr').textContent='';
+  if(!name){$('guardErr').textContent='이름을 입력하세요';return}
+  if(!/^\d{4,6}$/.test(pin)){$('guardErr').textContent='PIN은 숫자 4~6자리';return}
+  const guards=store.get(KEYS.guards,[]);
+  if(guards.some(g=>g.name===name)){$('guardErr').textContent='같은 이름이 이미 있습니다';return}
+  guards.push({name,h:await hash(pin),at:Date.now()});store.set(KEYS.guards,guards);
+  $('gName').value='';$('gPin').value='';renderAdmin();toast(`${name} 추가됨`);
+};
+$('btnChangeAdmin').onclick=async()=>{const pin=$('newAdminPin').value.trim();
+  if(!/^\d{4,6}$/.test(pin)){toast('PIN은 숫자 4~6자리');return}
+  store.set(KEYS.admin,{h:await hash(pin),at:Date.now()});$('newAdminPin').value='';toast('관리자 PIN 변경됨')};
+$('btnWipe').onclick=()=>$('wipeConfirm').hidden=false;
+$('btnWipeNo').onclick=()=>$('wipeConfirm').hidden=true;
+$('btnWipeYes').onclick=()=>{store.del(KEYS.db);store.del(KEYS.log);$('wipeConfirm').hidden=true;renderAdmin();toast('명단과 기록을 삭제했습니다')};
+$('btnCopyLog').onclick=async()=>{
+  const log=store.get(KEYS.log,[]);
+  const csv='\uFEFF시각,근무자,동작,조회내용,결과\n'+log.map(l=>[fmtDate(new Date(l.t)),l.u,l.a,l.q,l.r].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  try{await navigator.clipboard.writeText(csv);toast(`${log.length}건 복사됨 · 메모장/엑셀에 붙여넣기`)}
+  catch(e){const ta=document.createElement('textarea');ta.value=csv;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('복사됨')}catch(e2){toast('복사 실패')}ta.remove()}
+};
+
+/* ---------- excel parsing ---------- */
+let parsed=null; // {complex, sheets:{name:{rows,skipped,noPhone,units}}}
+$('btnUpload').onclick=()=>$('file').click();
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;
+  if(typeof XLSX==='undefined'){toast('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결 후 새로고침');return}
+  const rd=new FileReader();
+  rd.onload=ev=>{try{parsed=parseWorkbook(XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true}));showParsed()}
+    catch(err){$('parsePreview').textContent='읽기 실패: '+err.message}};
+  rd.readAsArrayBuffer(f);e.target.value=''};
+function cellStr(v){if(v==null)return '';if(v instanceof Date)return isNaN(v)?'':v.toISOString().slice(0,10);return String(v).trim()}
+function parseWorkbook(wb){
+  const out={complex:'',sheets:{}};
+  wb.SheetNames.forEach(name=>{
+    const ws=wb.Sheets[name];const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    const hi=rows.findIndex(r=>r&&r.some(c=>cellStr(c)==='차량번호'));
+    if(hi<0)return;
+    const hdr=rows[hi].map(c=>cellStr(c).replace(/\s/g,''));
+    const col=n=>hdr.findIndex(h=>h===n||h.startsWith(n));
+    const ci={dong:col('동'),ho:col('호'),plate:col('차량번호'),owner:col('등록인'),model:col('차종'),phone:col('연락처')>=0?col('연락처'):col('전화'),reg:col('등록일'),cancel:col('해지일')};
+    if(ci.plate<0||ci.dong<0||ci.ho<0)return;
+    for(let i=0;i<hi;i++){const t=(rows[i]||[]).map(cellStr).filter(x=>x&&!/차\s*량/.test(x));if(t.length){out.complex=out.complex||t[0];break}}
+    const res=[],skipped={cancelled:0,badPlate:0,noUnit:0};let dong='',ho='',units=new Set(),noPhone=0;
+    rows.slice(hi+1).forEach(r=>{
+      if(!r)return;
+      const d=cellStr(r[ci.dong]),h=cellStr(r[ci.ho]);
+      if(d){ if(/소계|합계|^동$/.test(d)){dong='';ho='';return} dong=d.replace(/동$/,'') }
+      if(h){ if(/소계|합계/.test(h)){return} ho=h.replace(/호$/,'') }
+      const plateRaw=cellStr(r[ci.plate]);if(!plateRaw)return;
+      const norm=normPlate(plateRaw);
+      if(!PLATE_RE.test(norm)){skipped.badPlate++;return}
+      if(!dong||!ho){skipped.noUnit++;return}
+      if(ci.cancel>=0&&cellStr(r[ci.cancel])){skipped.cancelled++;return}
+      const phone=ci.phone>=0?cellStr(r[ci.phone]).replace(/[^\d]/g,''):'';
+      if(!phone)noPhone++;
+      units.add(dong+'-'+ho);
+      res.push({dong,ho,plate:plateRaw.replace(/\s/g,''),norm,last4:norm.slice(-4),phone:phone?fmtPhone(phone):'',model:ci.model>=0?cellStr(r[ci.model]):'',owner:ci.owner>=0?cellStr(r[ci.owner]):'',regDate:ci.reg>=0?cellStr(r[ci.reg]):''});
+    });
+    out.sheets[name]={rows:res,skipped,noPhone,units:units.size};
+  });
+  return out;
+}
+function fmtPhone(d){if(d.length===11)return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;if(d.length===10)return d.startsWith('02')?`${d.slice(0,2)}-${d.slice(2,6)}-${d.slice(6)}`:`${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;return d}
+function showParsed(){
+  const names=Object.keys(parsed.sheets);
+  if(!names.length){$('parsePreview').textContent='"차량번호" 제목행이 있는 시트를 찾지 못했습니다. 동·호·차량번호·연락처 열 이름을 확인하세요.';return}
+  const sel=$('sheetPick');sel.innerHTML='';
+  names.sort((a,b)=>parsed.sheets[b].rows.length-parsed.sheets[a].rows.length).forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=`${n} (${parsed.sheets[n].rows.length}대)`;sel.appendChild(o)});
+  sel.hidden=false;$('applyRow').hidden=false;sel.onchange=preview;preview();
+  function preview(){const s=parsed.sheets[sel.value];
+    $('parsePreview').innerHTML=`<b>${esc(parsed.complex||'단지명 미확인')}</b> · 유효 ${s.rows.length}대 / ${s.units}세대 · 제외: 해지 ${s.skipped.cancelled}, 번호형식 ${s.skipped.badPlate}, 동호 미확인 ${s.skipped.noUnit} · 연락처 없음 ${s.noPhone}건<br>예시: ${s.rows.slice(0,3).map(r=>`${esc(r.dong)}-${esc(r.ho)} ${esc(r.plate)}`).join(', ')}`}
+}
+$('btnCancelApply').onclick=()=>{parsed=null;$('sheetPick').hidden=true;$('applyRow').hidden=true;$('parsePreview').textContent=''};
+$('btnApply').onclick=()=>{
+  const name=$('sheetPick').value;const s=parsed.sheets[name];
+  if(store.set(KEYS.db,{complex:parsed.complex,sheet:name,uploadedAt:fmtDate(new Date()),rows:s.rows,units:s.units,skipped:s.skipped,noPhone:s.noPhone})){
+    addLog('-',`${name} ${s.rows.length}대`,'명단업로드');toast(`${s.rows.length}대 저장됨`);$('btnCancelApply').onclick();renderAdmin()}
+};
+
+route();
+})();
+</script>
+
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
+</body>
+</html>
